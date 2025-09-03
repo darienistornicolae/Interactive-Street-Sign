@@ -75,7 +75,3 @@ To access from other devices on your local network:
 - **`./start.sh`** - Start both backend and frontend services
 - **`pnpm run server`** - Start backend only
 - **`pnpm run dev`** - Start frontend only
-
-## Deployment
-
-Ready for Netlify deployment with cloud database backend.

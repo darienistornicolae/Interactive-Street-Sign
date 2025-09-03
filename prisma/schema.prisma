@@ -1,0 +1,20 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model HarassmentReport {
+  id                      Int      @id @default(autoincrement())
+  incident_date           String
+  helped_with_harassment  String
+  created_at              DateTime @default(now())
+
+  @@map("harassment_reports")
+}

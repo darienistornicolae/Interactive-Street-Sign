@@ -4,9 +4,14 @@ const CallToAction = () => {
   return (
     <div className="call-to-action">
       <h2>Get Involved</h2>
-      <Link to="/harassment-form" className="cta-button">
+      <a
+        href="https://forms.gle/sgxaUEPvxrTBhVvj9"
+        className="cta-button"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         Report an Incident
-      </Link>
+      </a>
     </div>
   );
 };

@@ -4,7 +4,7 @@ const QRSection = () => {
       <h2>Scan for Reporting Tool</h2>
       <div className="qr-container">
         <img 
-          src="/qr-code.svg" 
+          src="/qr-code-forms.svg" 
           alt="QR Code for street intimidation resources" 
           className="qr-code"
         />

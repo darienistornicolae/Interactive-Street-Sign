@@ -36,10 +36,49 @@ function App() {
   }, [serverUrl])
 
   useEffect(() => {
-    fetchFormCount()
-    const interval = setInterval(fetchFormCount, 60 * 1000)
-    return () => clearInterval(interval)
-  }, [fetchFormCount])
+    let es: EventSource | null = null
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null
+
+    const startPolling = () => {
+      // immediate fetch, then every 30s
+      fetchFormCount()
+      fallbackTimer = setInterval(fetchFormCount, 30 * 1000)
+    }
+
+    const startSSE = () => {
+      try {
+        es = new EventSource(`${serverUrl}/api/form-count/stream`)
+        es.onmessage = (evt) => {
+          try {
+            const data = JSON.parse(evt.data)
+            if (typeof data.count === 'number') {
+              setFormCount(data.count)
+              setError(null)
+              setIsLoading(false)
+            }
+          } catch (e) {
+            // ignore parse errors
+          }
+        }
+        es.onerror = () => {
+          es?.close()
+          es = null
+          // fall back to polling
+          if (!fallbackTimer) startPolling()
+        }
+      } catch {
+        startPolling()
+      }
+    }
+
+    // prefer SSE; if it fails, we'll poll
+    startSSE()
+
+    return () => {
+      if (es) es.close()
+      if (fallbackTimer) clearInterval(fallbackTimer)
+    }
+  }, [serverUrl, fetchFormCount])
 
 
 
@@ -48,7 +87,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MainPage formCount={formCount} isLoading={isLoading} error={error} />} />
         <Route path="/harassment-form" element={<FormPage serverUrl={serverUrl} />} />
-      </Routes>
+        </Routes>
       
       <footer className="footer">
         <p>&copy; 2025 Community Safety Initiative</p>

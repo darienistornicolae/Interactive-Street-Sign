@@ -111,15 +111,59 @@ async function fetchResponsesCount() {
   if (!sheets) {
     throw new Error('Google Sheets client not initialized (auth failed or missing env vars)');
   }
-  const range = `'${RESPONSES_SHEET_NAME}'!A:A`;
-  const resp = await sheets.spreadsheets.values.get({
+
+  const TARGET_HEADER = (process.env.RESPONSES_YES_HEADER || 'Did you or someone help with the harassment?').trim().toLowerCase();
+
+  // 1) Read header row to find the column index
+  const headerResp = await sheets.spreadsheets.values.get({
     spreadsheetId: RESPONSES_SHEET_ID,
-    range,
+    range: `'${RESPONSES_SHEET_NAME}'!1:1`,
     majorDimension: 'ROWS',
   });
-  const rows = resp.data.values || [];
-  return Math.max(0, rows.length - 1);
+  const headerRow = (headerResp.data.values && headerResp.data.values[0]) || [];
+
+  let colIndex = headerRow.findIndex(h => (h || '').trim().toLowerCase() === TARGET_HEADER);
+  if (colIndex === -1) {
+    // Fallback: fuzzy match in case the header is slightly different
+    colIndex = headerRow.findIndex(h => {
+      const t = (h || '').toLowerCase();
+      return t.includes('did you or someone help') || (t.includes('help') && (t.includes('harassment') || t.includes('harass')));
+    });
+  }
+  if (colIndex === -1) {
+    throw new Error(`Could not find target header. Set RESPONSES_YES_HEADER env var to the exact column title.`);
+  }
+
+  // Helper to convert 0-based index -> column letter (A, B, ..., Z, AA, AB, ...)
+  function indexToColumnLetter(i) {
+    let n = i + 1;
+    let s = '';
+    while (n > 0) {
+      const r = (n - 1) % 26;
+      s = String.fromCharCode(65 + r) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  const colLetter = indexToColumnLetter(colIndex);
+
+  // 2) Read the column values (skip header) and count "Yes"
+  const valuesResp = await sheets.spreadsheets.values.get({
+    spreadsheetId: RESPONSES_SHEET_ID,
+    range: `'${RESPONSES_SHEET_NAME}'!${colLetter}2:${colLetter}`,
+    majorDimension: 'ROWS',
+  });
+
+  const rows = valuesResp.data.values || [];
+  const yesCount = rows.reduce((acc, row) => {
+    const v = (row[0] || '').trim().toLowerCase();
+    return acc + (v === 'yes' ? 1 : 0);
+  }, 0);
+
+  return yesCount;
 }
+
 
 app.get('/api/form-count', async (req, res) => {
   try {
